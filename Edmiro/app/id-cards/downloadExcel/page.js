@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "../../firebase/configfig";
+import { db } from "../../firebase/config";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { HiOutlineIdentification, HiOutlineDownload, HiOutlineSparkles } from "react-icons/hi";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
-import { useColors } from "../../components/ColorComponentent";
+import { useColors } from "../../components/ColorComponent";
 
 export default function IdCardsExportPage({ schoolId: propSchoolId }) {
     const colors = useColors();
