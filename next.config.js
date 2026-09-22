@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // Route prefix for Admin zone
+  basePath: '/admin',
+
   experimental: {
     serverActions: {
       bodySizeLimit: '20mb',
