@@ -124,8 +124,8 @@ const AttendanceListModal = ({ isOpen, onClose, attendanceRecords, students, cla
 };
 
 // --- Stat Card Component ---
-const StatCard = memo(({ icon: Icon, label, value, bgClass, iconColorClass, subText }) => (
-    <div className={`bg-white p-6 rounded-[24px] flex flex-col justify-center transition-transform hover:-translate-y-1 duration-300 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] border border-gray-100`}>
+const StatCard = memo(({ icon: Icon, label, value, iconColorClass, subText }) => (
+    <div className="bg-white p-6 rounded-[24px] flex flex-col justify-center transition-transform hover:-translate-y-1 duration-300 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.04)] border border-gray-100">
         <div className="flex items-center gap-4">
             <div className={`p-4 rounded-full flex-shrink-0 flex items-center justify-center ${iconColorClass}`}>
                 <Icon size={24} strokeWidth={2} />
@@ -179,7 +179,7 @@ export default function ProfessionalDashboard() {
     const [monthlyFeeTrend, setMonthlyFeeTrend] = useState([]);
     const [incomeVsExpenseTrend, setIncomeVsExpenseTrend] = useState([]);
 
-    // Load branch context & user credentials on mount
+    // Load branch context & user credentials on mount (No verification / redirects)
     useEffect(() => {
         const storedUser = localStorage.getItem('currentUser');
         const storedSchoolId = localStorage.getItem('currentSchoolId');
@@ -243,12 +243,10 @@ export default function ProfessionalDashboard() {
 
         const fetchSessionsAndSettings = async () => {
             try {
-                // A. Fetch all available session documents from: Data -> {schoolId} -> sessions
                 const sessionsColRef = collection(db, "Data", currentSchoolId, "sessions");
                 const sessionsSnap = await getDocs(sessionsColRef);
                 let dynamicSessions = sessionsSnap.docs.map(doc => doc.id);
 
-                // B. Fetch activeSession from: Data -> {schoolId} -> config -> settings
                 const configRef = doc(db, "Data", currentSchoolId, "config", "settings");
                 const configSnap = await getDoc(configRef);
 
@@ -283,7 +281,6 @@ export default function ProfessionalDashboard() {
 
         fetchSessionsAndSettings();
 
-        // Real-time listener for activeSession changes in Data -> {schoolId} -> config -> settings
         const configRef = doc(db, "Data", currentSchoolId, "config", "settings");
         const unsubscribe = onSnapshot(configRef, (snap) => {
             if (snap.exists()) {
@@ -391,7 +388,7 @@ export default function ProfessionalDashboard() {
 
         fetchStudentsAndStructures();
 
-        // --- Fee Collections Real-time ---
+        // Fee Collections Real-time
         const unsubFees = onSnapshot(collectionGroup(db, 'feePayments'), async (snap) => {
             let sessionTotal = 0;
             let currentMonthTotal = 0;
@@ -473,7 +470,7 @@ export default function ProfessionalDashboard() {
             setMonthlyFeeTrend(orderedTrend);
         });
 
-        // --- Income & Expenditure Real-time Listeners ---
+        // Income & Expenditure Real-time Listeners
         let unsubSalary = () => {};
         let unsubAccounts = () => {};
         let unsubFeePaymentsForGraph = () => {};
@@ -514,7 +511,6 @@ export default function ProfessionalDashboard() {
                     }));
                 };
 
-                // Salary payments listener
                 unsubSalary = onSnapshot(collection(db, 'Data', currentSchoolId, 'salaryPayments'), (salarySnap) => {
                     salarySnap.docs.forEach(docSnap => {
                         const docData = docSnap.data();
@@ -554,7 +550,6 @@ export default function ProfessionalDashboard() {
                     updateGraphState();
                 });
 
-                // Manual accounts listener
                 unsubAccounts = onSnapshot(collection(db, 'Data', currentSchoolId, 'sessions', data.session, 'accounts'), (manualSnap) => {
                     manualSnap.docs.forEach(d => {
                         const mData = d.data();
@@ -590,7 +585,6 @@ export default function ProfessionalDashboard() {
                     updateGraphState();
                 });
 
-                // Fee payments graph inclusion
                 unsubFeePaymentsForGraph = onSnapshot(collectionGroup(db, 'feePayments'), (snap) => {
                     snap.docs.forEach(d => {
                         if (!d.ref.path.includes(`Data/${currentSchoolId}`) || !d.ref.path.includes(data.session)) return;
@@ -641,7 +635,7 @@ export default function ProfessionalDashboard() {
 
         setupIncExpRealtime();
 
-        // --- Real-time Attendance ---
+        // Real-time Attendance
         const tzOffset = (new Date()).getTimezoneOffset() * 60000; 
         const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, -1);
         const todayStr = localISOTime.split('T')[0];
@@ -754,7 +748,6 @@ export default function ProfessionalDashboard() {
                         icon={HiOutlineAcademicCap} 
                         label="Active Students" 
                         value={stats.totalStudents} 
-                        bgClass="bg-white" 
                         iconColorClass="bg-yellow-50 text-yellow-600" 
                         subText="Enrolled this session"
                     />
@@ -762,7 +755,6 @@ export default function ProfessionalDashboard() {
                         icon={HiOutlineCurrencyRupee} 
                         label="Present Month Fee" 
                         value={`₹ ${stats.monthlyFeeColl.toLocaleString('en-IN')}`} 
-                        bgClass="bg-white" 
                         iconColorClass="bg-gray-100 text-gray-800" 
                         subText="Collected current month"
                     />
@@ -770,7 +762,6 @@ export default function ProfessionalDashboard() {
                         icon={HiOutlineCurrencyRupee} 
                         label="Complete Session Fee" 
                         value={`₹ ${stats.totalSessionColl.toLocaleString('en-IN')}`} 
-                        bgClass="bg-white" 
                         iconColorClass="bg-yellow-50 text-yellow-600" 
                         subText="Total session collection"
                     />
@@ -778,7 +769,6 @@ export default function ProfessionalDashboard() {
                         icon={HiOutlineExclamationCircle} 
                         label="Pending Fees Overview" 
                         value={`₹ ${stats.pendingFeesTotal.toLocaleString('en-IN')}`} 
-                        bgClass="bg-white" 
                         iconColorClass="bg-red-50 text-red-500" 
                         subText="Outstanding student dues"
                     />

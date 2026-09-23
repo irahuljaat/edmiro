@@ -10,7 +10,7 @@ export function middleware(request) {
   const protectedPaths = ['/dashboard', '/students', '/id-generator'];
   
   if (protectedPaths.some(path => pathname.startsWith(path)) && !hasSession) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/portal', request.url));
   }
 
   return NextResponse.next();

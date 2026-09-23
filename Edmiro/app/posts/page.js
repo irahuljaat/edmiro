@@ -139,18 +139,12 @@ export default function PostMakerPage() {
         });
       }
 
-      // 2. Fetch Templates directly from schools -> app_assets -> templates
-      const templatesSnap = await getDoc(doc(db, 'schools', 'app_assets', 'templates', 'templates'));
+      // 2. Fetch Templates directly from collection 'app_assets' -> document 'templates'
+      const templatesSnap = await getDoc(doc(db, 'app_assets', 'templates'));
       let templatesData = {};
 
       if (templatesSnap.exists()) {
         templatesData = templatesSnap.data();
-      } else {
-        // Fallback check if stored directly under doc(db, 'schools', 'app_assets')
-        const fallbackSnap = await getDoc(doc(db, 'schools', 'app_assets'));
-        if (fallbackSnap.exists()) {
-          templatesData = fallbackSnap.data().templates || fallbackSnap.data();
-        }
       }
 
       if (Object.keys(templatesData).length > 0) {
@@ -204,7 +198,10 @@ export default function PostMakerPage() {
       if (postCanvasRef.current) exportContainer.innerHTML = postCanvasRef.current.innerHTML;
       document.body.appendChild(exportContainer);
       const canvas = await html2canvas(exportContainer, {
-        scale: 1, useCORS: true, allowTaint: false, backgroundColor: '#ffffff',
+        scale: 1, 
+        useCORS: true, 
+        allowTaint: true, 
+        backgroundColor: '#ffffff',
         onclone: (clonedDoc) => {
           const allElements = clonedDoc.querySelectorAll('*');
           allElements.forEach((el) => {
@@ -238,7 +235,7 @@ export default function PostMakerPage() {
     setCopied(false);
     try {
       const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const prompt = `Write a warm, engaging social media caption (2–3 sentences) for a school post.\nPoster title: "${activeTemplate.name}"\nCategory: "${activeTemplate.category}"\nSchool name: "${schoolData.schoolName}"\n${schoolData.schoolTagline ? `School tagline: "${schoolData.schoolTagline}"` : ''}\nEnd the caption with 8–10 relevant hashtags on a new line.\nReturn plain text only — no markdown, no asterisks, no bullet points.`;
       const result = await model.generateContent(prompt);
       setCaption(result.response.text().trim());
@@ -511,20 +508,26 @@ export default function PostMakerPage() {
                           background: activeTemplate.bg && activeTemplate.bg.startsWith('#') ? activeTemplate.bg : '#ffffff',
                         }}
                       >
-                        {/* Background image (if bg is a URL) */}
+                        {/* Background image */}
                         {activeTemplate.bg && !activeTemplate.bg.startsWith('#') && (
                           <img
-                            crossOrigin="anonymous"
+                            key={activeTemplate.bg}
                             src={activeTemplate.bg}
                             alt="background"
+                            referrerPolicy="no-referrer"
                             onError={(e) => {
+                              console.warn("Direct image load failed, trying fallback:", activeTemplate.bg);
                               e.target.onerror = null;
-                              e.target.src = "https://res.cloudinary.com/demo/image/upload/q_auto,f_auto,w_1080,h_1080,c_fill/sample.jpg";
+                              e.target.src = "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1080&auto=format&fit=crop";
                             }}
                             style={{
-                              position: 'absolute', top: 0, left: 0,
-                              width: '100%', height: '100%',
-                              objectFit: 'cover', zIndex: 0,
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              zIndex: 0,
                             }}
                           />
                         )}
@@ -534,6 +537,7 @@ export default function PostMakerPage() {
                           activeTemplate.elements.map((el, idx) => {
                             const key = el.id || `el_${idx}`;
 
+                            // 1. Shapes
                             if (el.type === 'shape') {
                               return (
                                 <div
@@ -551,6 +555,31 @@ export default function PostMakerPage() {
                               );
                             }
 
+                            // 2. Vector SVG Icons
+                            if (el.type === 'icon') {
+                              return (
+                                <div
+                                  key={key}
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${el.x}px`, top: `${el.y}px`,
+                                    width: `${el.width || 44}px`, height: `${el.height || 44}px`,
+                                    color: el.color || '#38BDF8',
+                                    opacity: el.opacity != null ? el.opacity / 100 : 1,
+                                    zIndex: 15,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '100%', height: '100%' }}>
+                                    <path d={el.svgPath} />
+                                  </svg>
+                                </div>
+                              );
+                            }
+
+                            // 3. Images / Logos
                             if (el.type === 'image') {
                               const resolvedSrc = resolveValue(el.src || '', el.fieldBinding);
                               
@@ -568,9 +597,10 @@ export default function PostMakerPage() {
                                 >
                                   {resolvedSrc ? (
                                     <img
-                                      crossOrigin="anonymous"
+                                      key={resolvedSrc}
                                       src={resolvedSrc}
                                       alt={el.id || 'element'}
+                                      referrerPolicy="no-referrer"
                                       onError={(e) => {
                                         e.target.style.display = 'none';
                                         if (e.target.nextSibling) {
@@ -605,6 +635,7 @@ export default function PostMakerPage() {
                               );
                             }
 
+                            // 4. Texts
                             if (el.type === 'text') {
                               const displayText = resolveValue(el.text || '', el.fieldBinding);
                               const fontStyle = el.font || el.fontFamily || 'sans-serif';

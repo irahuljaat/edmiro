@@ -26,6 +26,22 @@ export default function LoginPage() {
 
   const router = useRouter();
 
+  // Helper to parse Firestore Timestamp, string date, or number safely
+  const isPlanExpired = (expiryDate) => {
+    if (!expiryDate) return false;
+
+    let expiry;
+    if (typeof expiryDate?.toDate === 'function') {
+      // Firestore Timestamp
+      expiry = expiryDate.toDate();
+    } else {
+      // ISO string, standard date string, or epoch milliseconds
+      expiry = new Date(expiryDate);
+    }
+
+    return new Date() > expiry;
+  };
+
   // Load school metadata from Data -> [schoolId] -> config -> schoolDetails
   const loadSchoolDetails = async (schoolId) => {
     if (!schoolId) return null;
@@ -59,7 +75,7 @@ export default function LoginPage() {
           if (account.groupId === userGroupId && account.schoolId) {
             branches.push({
               label: accountKey,
-              value: account.schoolId
+              value: account.schoolId,
             });
           }
         }
@@ -72,7 +88,7 @@ export default function LoginPage() {
         if (!branches.some((b) => b.value === docId)) {
           branches.push({
             label: docId.replace(/_/g, ' '),
-            value: docId
+            value: docId,
           });
         }
       });
@@ -87,7 +103,7 @@ export default function LoginPage() {
     }
   };
 
-  // Step 1: Validate ID & Password, check isEnable flag
+  // Step 1: Validate ID & Password, check isEnable flag & expiryDate
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -97,7 +113,7 @@ export default function LoginPage() {
       const authSnap = await getDoc(authRef);
 
       if (!authSnap.exists()) {
-        alert("Authentication configuration not found.");
+        alert('Authentication configuration not found.');
         setLoading(false);
         return;
       }
@@ -114,13 +130,20 @@ export default function LoginPage() {
       }
 
       if (!matchedUser) {
-        alert("Login Failed: Invalid Login ID or Password.");
+        alert('Login Failed: Invalid Login ID or Password.');
         setLoading(false);
         return;
       }
 
-      // Check if account / plan is enabled
+      // Check if account is manually disabled
       if (matchedUser.isEnable === false) {
+        setLoading(false);
+        router.push('/expired-plan');
+        return;
+      }
+
+      // Check if expiryDate is past/outdated
+      if (matchedUser.expiryDate && isPlanExpired(matchedUser.expiryDate)) {
         setLoading(false);
         router.push('/expired-plan');
         return;
@@ -140,7 +163,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error(err);
-      alert("Login Error: Unable to authenticate.");
+      alert('Login Error: Unable to authenticate.');
       setLoading(false);
     }
   };
@@ -156,7 +179,7 @@ export default function LoginPage() {
     }
 
     localStorage.setItem('currentUser', JSON.stringify(user));
-    document.cookie = "user_session=true; path=/; SameSite=Strict";
+    document.cookie = 'user_session=true; path=/; SameSite=Strict';
 
     router.push('/dashboard');
     router.refresh();
@@ -263,12 +286,12 @@ export default function LoginPage() {
             </div>
 
             <button 
-              type="submit"
+              type="submit" 
               disabled={loading}
               className="w-full mt-2 text-slate-900 font-black py-4 rounded-2xl text-xs uppercase tracking-wider shadow-lg hover:opacity-95 transition-all cursor-pointer"
               style={{ backgroundColor: colors.primary || '#FFD166' }}
             >
-              {loading ? "VERIFYING..." : "Sign in"}
+              {loading ? 'VERIFYING...' : 'Sign in'}
             </button>
           </form>
 
@@ -288,7 +311,7 @@ export default function LoginPage() {
             
             <button 
               onClick={() => setShowBranchModal(false)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition cursor-pointer"
             >
               <HiX className="text-xl" />
             </button>
@@ -328,7 +351,7 @@ export default function LoginPage() {
               className="w-full text-slate-900 font-black py-4 rounded-2xl text-xs uppercase tracking-wider shadow-md hover:opacity-95 transition-all cursor-pointer"
               style={{ backgroundColor: colors.primary || '#FFD166' }}
             >
-              {loading ? "LOADING DASHBOARD..." : "Proceed to Dashboard"}
+              {loading ? 'LOADING DASHBOARD...' : 'Proceed to Dashboard'}
             </button>
 
           </div>

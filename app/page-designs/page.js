@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase/config';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, mvgDb } from '../firebase/config';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { 
   HiOutlineSparkles, 
   HiOutlinePlus, 
@@ -332,25 +332,33 @@ export default function TemplateDesignerPage() {
     setIsDragging(false);
   };
 
-  // Save to Firestore
+  // Save to Both Firestores (Central db & MVG mvgDb)
   const handleSaveToFirestore = async () => {
     if (!currentTemplate.templateKey) return;
     setSaving(true);
     try {
       const { templateKey, ...payload } = currentTemplate;
-      const docRef = doc(db, 'app_assets', 'templates');
+      
+      const centralDocRef = doc(db, 'app_assets', 'templates');
+      const mvgDocRef = doc(mvgDb, 'app_assets', 'templates');
 
-      await updateDoc(docRef, {
+      const dataToSave = {
         [templateKey]: payload
-      });
+      };
+
+      // Save to both projects simultaneously
+      await Promise.all([
+        setDoc(centralDocRef, dataToSave, { merge: true }),
+        setDoc(mvgDocRef, dataToSave, { merge: true })
+      ]);
 
       setAllTemplates(prev => ({
         ...prev,
         [templateKey]: payload
       }));
-      alert(`Template "${payload.name}" updated successfully!`);
+      alert(`Template "${payload.name}" updated in both databases successfully!`);
     } catch (err) {
-      console.error('Error saving template:', err);
+      console.error('Error saving template across databases:', err);
       alert('Save Error: ' + err.message);
     } finally {
       setSaving(false);
